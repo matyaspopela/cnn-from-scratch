@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dpkg -l)",
+      "Bash(rpm -qa)",
+      "Bash(pkg-config --list-all)",
+      "WebSearch",
+      "WebFetch(domain:youtrack.jetbrains.com)"
+    ]
+  }
+}
