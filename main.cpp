@@ -3,6 +3,7 @@
 #include <random>
 #include <cstdint> // Needed for uint32_t (unsigned 32-bit integer)
 #include <fstream>
+#include <algorithm> //std::max
 //typedef & namespaces
 typedef unsigned char uchar;
 
@@ -46,7 +47,64 @@ struct Matrix
             val = distribution(gen);
         }
     }
+    Matrix transpose() const {
+        // 2. Create a new matrix with flipped dimensions
+        Matrix result(cols, rows);
+
+        for (int i = 0; i < rows; ++i) {
+            for (int j = 0; j < cols; ++j) {
+
+                // 3. Read from original (i, j), write to flipped (j, i)
+                // We use your existing operator() to handle the 1D index math safely.
+                result(j, i) = this->operator()(i, j);
+            }
+        }
+        return result;
+    }
 };
+
+Matrix operator+(const Matrix& A, const Matrix& B) {
+    if (A.rows != B.rows) {throw std::runtime_error("A.rows != B.rows, cannot process.");}
+    Matrix result(A.rows, A.cols);
+    if (A.cols == B.cols) {
+        for (int i = 0; i < A.rows; ++i) {
+            for (int j = 0; j < A.cols; ++j) {
+                result(i, j) = A(i, j) + B(i, j);
+            }
+        }
+        return result;
+    }
+    if (A.cols == 1) {
+        for (int i = 0; i < A.rows; ++i) {
+            for (int j = 0; j < A.cols; ++j) {
+                result(i, j) = A(i, 0) + B(i, j);
+            }
+        }
+        return result;
+    }
+    for (int i = 0; i < A.rows; ++i) {
+        for (int j = 0; j < A.cols; ++j) {
+            result(i, j) = A(i, j) + B(i, 0);
+        }
+    }
+    return result;
+}
+
+Matrix operator*(const Matrix& A, const Matrix& B) {
+    if (A.cols != B.rows) {throw std::runtime_error("Cannot get a dot product - A.cols != B.rows");}
+    Matrix result(A.rows, B.cols);
+    for (int i=0;i < A.rows; ++i) {
+        for (int j=0;j < B.cols; ++j) {
+            float sum = 0.0f;
+            for (int k = 0; k <A.cols; ++k) {
+                sum += A(i, k) * B(k, j);
+            }
+            result(i, j) = sum;
+        }
+    }
+    return result;
+}
+
 
 struct Dataset {
     std::vector<Matrix> images;
@@ -55,7 +113,7 @@ struct Dataset {
 
 class DatasetLoader {
 public:
-    Dataset loadImages(const std::string& filepath) {
+    Dataset static loadImages(const std::string& filepath) {
         Dataset dataset;
         std::ifstream file(filepath, std::ios::binary);
 
@@ -124,6 +182,35 @@ public:
 };
 
 
+class Layer {
+private:
+    Matrix W;
+    Matrix B;
+    Matrix cached_input;
+public:
+    Layer(int input_size, int output_size)
+        :W(output_size, input_size), B(output_size, 1), cached_input(input_size, 1) {
+
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        W.randomize(gen);
+    }
+    Matrix forward(const Matrix& input) { //produces a vector - Matrix(W.rows,1) (B.cols is always 1)
+        cached_input = input;
+        return (W * input) + B;
+    }
+    Matrix static ReLU(const Matrix& input) {
+        Matrix result(input.rows, input.cols);
+        for (size_t i = 0; i < input.data.size(); ++i) {
+            result.data[i] = std::max(0.0f, input.data[i]);
+        }
+        return result;
+    }
+    Matrix backward (const Matrix& gradient) {
+    }
+};
+
+
 
 
 int main()
@@ -133,7 +220,7 @@ int main()
 
     dataset_loader.loadImages(IMGS_PATH);
     dataset_loader.populateLabels(dataset, LABELS_PATH);
-    
+
 
     return 0;
 }
