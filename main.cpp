@@ -204,10 +204,14 @@ public:
         std::mt19937 gen(rd());
         W.randomize(gen);
     }
+
     Matrix forward(const Matrix& input) { //produces a vector - Matrix(W.rows,1) (B.cols is always 1)
         cached_input = input;
-        return (W * input) + B;
+        cached_output = W*input + B;
+        if (!useReLU) return cached_output;
+        return ReLU(cached_output);
     }
+
     static Matrix ReLU(const Matrix& input) {
         Matrix result(input.rows, input.cols);
         for (size_t i = 0; i < input.data.size(); ++i) {
@@ -215,7 +219,7 @@ public:
         }
         return result;
     }
-    static Matrix ReLUbackward(const Matrix& input, const Matrix& cached) {
+    static Matrix ReLUBackward(const Matrix& input, const Matrix& cached) {
         Matrix result(input.rows, input.cols);
         for (int i =0; i < input.data.size(); ++i) {
             result.data[i] = cached.data[i] > 0 ? input.data[i] : 0.0f;
@@ -223,9 +227,7 @@ public:
         return result;
     }
     Matrix backward (const Matrix& dA,float lr) {
-
-        Matrix gradient = useReLU ? ReLUbackward(dA,cached_input) : dA;
-
+        Matrix gradient = useReLU ? ReLUBackward(dA,cached_output) : dA;
         Matrix dW = gradient * cached_input.transpose();
         //adjust weights & biases
         for (int i =0; i < W.rows; ++i) {
