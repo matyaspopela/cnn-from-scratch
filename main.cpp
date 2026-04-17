@@ -61,6 +61,9 @@ struct Matrix
         }
         return result;
     }
+    std::vector<int> size() {
+        return {rows, cols};
+    }
 };
 
 Matrix operator+(const Matrix& A, const Matrix& B) {
@@ -187,9 +190,15 @@ private:
     Matrix W;
     Matrix B;
     Matrix cached_input;
+    Matrix cached_output;
+    bool useReLU;
 public:
-    Layer(int input_size, int output_size)
-        :W(output_size, input_size), B(output_size, 1), cached_input(input_size, 1) {
+    Layer(int input_size, int output_size, bool useReLU = false)
+        :W(output_size, input_size),
+        B(output_size, 1),
+        cached_input(input_size, 1),
+        cached_output(output_size, 1),
+        useReLU(useReLU) {
 
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -199,18 +208,35 @@ public:
         cached_input = input;
         return (W * input) + B;
     }
-    Matrix static ReLU(const Matrix& input) {
+    static Matrix ReLU(const Matrix& input) {
         Matrix result(input.rows, input.cols);
         for (size_t i = 0; i < input.data.size(); ++i) {
             result.data[i] = std::max(0.0f, input.data[i]);
         }
         return result;
     }
-    Matrix backward (const Matrix& gradient) {
+    static Matrix ReLUbackward(const Matrix& input, const Matrix& cached) {
+        Matrix result(input.rows, input.cols);
+        for (int i =0; i < input.data.size(); ++i) {
+            result.data[i] = cached.data[i] > 0 ? input.data[i] : 0.0f;
+        }
+        return result;
+    }
+    Matrix backward (const Matrix& dA,float lr) {
+
+        Matrix gradient = useReLU ? ReLUbackward(dA,cached_input) : dA;
+
+        Matrix dW = gradient * cached_input.transpose();
+        //adjust weights & biases
+        for (int i =0; i < W.rows; ++i) {
+            B.data[i] -= gradient.data[i] * lr;
+            for (int j = 0; j < W.cols; ++j) {
+                W(i,j) -= dW(i,j) * lr;
+            }
+        }
+        return W.transpose() * gradient;
     }
 };
-
-
 
 
 int main()
