@@ -61,8 +61,22 @@ struct Matrix
         }
         return result;
     }
-    std::vector<int> size() {
-        return {rows, cols};
+    static std::pair<int , int> dimensions(const Matrix& mat) {
+        return {mat.rows, mat.cols};
+    }
+
+    static Matrix average(const std::vector<Matrix>& matList) {
+        Matrix result(matList[0].rows, matList[0].cols);
+        float sum;
+        for (int i=0; i < result.data.size(); ++i) {
+            if (dimensions(matList[0]) != dimensions(result)) {throw std::runtime_error("Dimensions must match, even at index: " + std::to_string(i));}
+            sum = 0.0f;
+            for (int j = 0; j < matList.size(); ++j) {
+                sum += matList[j].data[i];
+            }
+            result.data[i] = sum / matList.size();
+        }
+        return result;
     }
 };
 
@@ -243,12 +257,5 @@ public:
 
 int main()
 {
-    DatasetLoader dataset_loader;
-    Dataset dataset;
-
-    dataset_loader.loadImages(IMGS_PATH);
-    dataset_loader.populateLabels(dataset, LABELS_PATH);
-
-
     return 0;
 }
