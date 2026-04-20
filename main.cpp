@@ -47,20 +47,16 @@ struct Matrix
             val = distribution(gen);
         }
     }
-    Matrix transpose() const {
-        // 2. Create a new matrix with flipped dimensions
-        Matrix result(cols, rows);
-
-        for (int i = 0; i < rows; ++i) {
-            for (int j = 0; j < cols; ++j) {
-
-                // 3. Read from original (i, j), write to flipped (j, i)
-                // We use your existing operator() to handle the 1D index math safely.
-                result(j, i) = this->operator()(i, j);
+     static Matrix transpose(Matrix& Mat) {
+        Matrix result(Mat.cols, Mat.rows);
+        for (int i =0; i < Mat.rows; ++i) {
+            for (int j = 0; j< Mat.cols; ++j) {
+                result(j,i) = Mat(i, j);
             }
         }
         return result;
     }
+
 };
 
 Matrix operator+(const Matrix& A, const Matrix& B) {
@@ -154,7 +150,7 @@ public:
         file.close();
         return dataset;
     }
-    void populateLabels(Dataset& dataset, const std::string& filepath) {
+    static void populateLabels(Dataset& dataset, const std::string& filepath) {
         std::ifstream file(filepath, std::ios::binary);
         if (!file.is_open()) {
             throw std::runtime_error("Failed to open file, dataset cannot be populated with labels");
@@ -207,9 +203,9 @@ public:
         return result;
     }
     Matrix backward (const Matrix& gradient) {
+        return Matrix(gradient.rows,gradient.cols) = gradient;
     }
 };
-
 
 
 
