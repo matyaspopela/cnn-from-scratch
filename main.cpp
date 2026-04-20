@@ -56,7 +56,23 @@ struct Matrix
         }
         return result;
     }
+    static std::pair<int , int> dimensions(const Matrix& mat) {
+        return {mat.rows, mat.cols};
+    }
 
+    static Matrix average(const std::vector<Matrix>& matList) {
+        Matrix result(matList[0].rows, matList[0].cols);
+        float sum;
+        for (int i=0; i < result.data.size(); ++i) {
+            if (dimensions(matList[0]) != dimensions(result)) {throw std::runtime_error("Dimensions must match, even at index: " + std::to_string(i));}
+            sum = 0.0f;
+            for (int j = 0; j < matList.size(); ++j) {
+                sum += matList[j].data[i];
+            }
+            result.data[i] = sum / matList.size();
+        }
+        return result;
+    }
 };
 
 Matrix operator+(const Matrix& A, const Matrix& B) {
@@ -183,40 +199,60 @@ private:
     Matrix W;
     Matrix B;
     Matrix cached_input;
+    Matrix cached_output;
+    bool useReLU;
 public:
-    Layer(int input_size, int output_size)
-        :W(output_size, input_size), B(output_size, 1), cached_input(input_size, 1) {
+    Layer(int input_size, int output_size, bool useReLU = false)
+        :W(output_size, input_size),
+        B(output_size, 1),
+        cached_input(input_size, 1),
+        cached_output(output_size, 1),
+        useReLU(useReLU) {
 
         std::random_device rd;
         std::mt19937 gen(rd());
         W.randomize(gen);
     }
+
     Matrix forward(const Matrix& input) { //produces a vector - Matrix(W.rows,1) (B.cols is always 1)
         cached_input = input;
-        return (W * input) + B;
+        cached_output = W*input + B;
+        if (!useReLU) return cached_output;
+        return ReLU(cached_output);
     }
-    Matrix static ReLU(const Matrix& input) {
+
+    static Matrix ReLU(const Matrix& input) {
         Matrix result(input.rows, input.cols);
         for (size_t i = 0; i < input.data.size(); ++i) {
             result.data[i] = std::max(0.0f, input.data[i]);
         }
         return result;
     }
-    Matrix backward (const Matrix& gradient) {
-        return Matrix(gradient.rows,gradient.cols) = gradient;
+    static Matrix ReLUBackward(const Matrix& input, const Matrix& cached) {
+        Matrix result(input.rows, input.cols);
+        for (int i =0; i < input.data.size(); ++i) {
+            result.data[i] = cached.data[i] > 0 ? input.data[i] : 0.0f;
+        }
+        return result;
+    }
+    Matrix backward (const Matrix& dA,float lr) {
+        Matrix gradient = useReLU ? ReLUBackward(dA,cached_output) : dA;
+        Matrix dW = gradient * cached_input.transpose();
+        //adjust weights & biases
+        for (int i =0; i < W.rows; ++i) {
+            B.data[i] -= gradient.data[i] * lr;
+            for (int j = 0; j < W.cols; ++j) {
+                W(i,j) -= dW(i,j) * lr;
+            }
+        }
+        return W.transpose() * gradient;
     }
 };
 
 
 
+
 int main()
 {
-    DatasetLoader dataset_loader;
-    Dataset dataset;
-
-    dataset_loader.loadImages(IMGS_PATH);
-    dataset_loader.populateLabels(dataset, LABELS_PATH);
-
-
     return 0;
 }
