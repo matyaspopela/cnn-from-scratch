@@ -1,24 +1,40 @@
-//
-// Created by matyaspopela on 4/19/26.
-//
+#ifndef MATRIX_H
+#define MATRIX_H
 
-#ifndef CNN_FROM_SCRATCH_MATRIX_H
-#define CNN_FROM_SCRATCH_MATRIX_H
 #include <vector>
-
+#include <random>
+#include <utility>
 
 class Matrix {
 private:
 	int rows, cols;
 	std::vector<float> data;
-public:
-	Matrix(int r, int c);
 
-	float& operator()(int r, int c);
-	float& operator[](int index);
-	
+public:
+	// Constructor
+	Matrix(int row, int col);
+
+	// Accessors
+	int getRows() const;
+	int getCols() const;
+	std::vector<float>& getData();
+	const std::vector<float>& getData() const;
+
+	// Element access operators
+	float& operator()(int row, int col);
+	float operator()(int row, int col) const;
+
+	// Methods
+	void randomize(std::mt19937& gen);
+
+	// Static helper methods
+	static Matrix transpose(const Matrix& Mat);
+	static std::pair<int, int> dimensions(const Matrix& mat);
+	static Matrix average(const std::vector<Matrix>& matList);
 };
 
+// Non-member operator overloads
+Matrix operator+(const Matrix& A, const Matrix& B);
+Matrix operator*(const Matrix& A, const Matrix& B);
 
-
-#endif //CNN_FROM_SCRATCH_MATRIX_H
+#endif // MATRIX_H

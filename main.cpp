@@ -4,6 +4,9 @@
 #include <cstdint> // Needed for uint32_t (unsigned 32-bit integer)
 #include <fstream>
 #include <algorithm> //std::max
+
+#include "matrix.h" // Included the Matrix class header
+
 //typedef & namespaces
 typedef unsigned char uchar;
 
@@ -18,105 +21,6 @@ uint32_t flipBytes(uint32_t value) {
            ((value & 0x0000FF00) << 8)  | // Grab byte 3, slide it left a little
            ((value & 0x000000FF) << 24);  // Grab byte 4, slide it all the way left
 }
-
-
-struct Matrix
-{
-    int rows, cols;
-    std::vector<float> data;
-
-    //constructor
-    Matrix(int row, int col) : rows(row) , cols(col)
-    {
-        data.resize(row * col, 0.0f);
-    }
-
-
-    float& operator() (int row, int col)
-    {
-        return data[(row * cols) + col];
-    }
-
-    float operator() (int row, int col) const
-    {
-        return data[(row * cols) + col];
-    }
-    void randomize(std::mt19937& gen) {
-        std::uniform_real_distribution<float> distribution(-0.1f, 0.1f);
-        for (float& val: data) {
-            val = distribution(gen);
-        }
-    }
-     static Matrix transpose(Matrix& Mat) {
-        Matrix result(Mat.cols, Mat.rows);
-        for (int i =0; i < Mat.rows; ++i) {
-            for (int j = 0; j< Mat.cols; ++j) {
-                result(j,i) = Mat(i, j);
-            }
-        }
-        return result;
-    }
-    static std::pair<int , int> dimensions(const Matrix& mat) {
-        return {mat.rows, mat.cols};
-    }
-
-    static Matrix average(const std::vector<Matrix>& matList) {
-        Matrix result(matList[0].rows, matList[0].cols);
-        float sum;
-        for (int i=0; i < result.data.size(); ++i) {
-            if (dimensions(matList[0]) != dimensions(result)) {throw std::runtime_error("Dimensions must match, even at index: " + std::to_string(i));}
-            sum = 0.0f;
-            for (int j = 0; j < matList.size(); ++j) {
-                sum += matList[j].data[i];
-            }
-            result.data[i] = sum / matList.size();
-        }
-        return result;
-    }
-};
-
-Matrix operator+(const Matrix& A, const Matrix& B) {
-    if (A.rows != B.rows) {throw std::runtime_error("A.rows != B.rows, cannot process.");}
-    Matrix result(A.rows, A.cols);
-    if (A.cols == B.cols) {
-        for (int i = 0; i < A.rows; ++i) {
-            for (int j = 0; j < A.cols; ++j) {
-                result(i, j) = A(i, j) + B(i, j);
-            }
-        }
-        return result;
-    }
-    if (A.cols == 1) {
-        for (int i = 0; i < A.rows; ++i) {
-            for (int j = 0; j < A.cols; ++j) {
-                result(i, j) = A(i, 0) + B(i, j);
-            }
-        }
-        return result;
-    }
-    for (int i = 0; i < A.rows; ++i) {
-        for (int j = 0; j < A.cols; ++j) {
-            result(i, j) = A(i, j) + B(i, 0);
-        }
-    }
-    return result;
-}
-
-Matrix operator*(const Matrix& A, const Matrix& B) {
-    if (A.cols != B.rows) {throw std::runtime_error("Cannot get a dot product - A.cols != B.rows");}
-    Matrix result(A.rows, B.cols);
-    for (int i=0;i < A.rows; ++i) {
-        for (int j=0;j < B.cols; ++j) {
-            float sum = 0.0f;
-            for (int k = 0; k <A.cols; ++k) {
-                sum += A(i, k) * B(k, j);
-            }
-            result(i, j) = sum;
-        }
-    }
-    return result;
-}
-
 
 struct Dataset {
     std::vector<Matrix> images;
@@ -155,7 +59,7 @@ public:
         for (int i = 0; i < nimages; ++i) {
             file.read((char*) pixel_buffer.data(), image_size);
 
-            // initialize our matrix (from struct)
+            // initialize our matrix (from class)
             Matrix img(image_size, 1);
             //copy pxl buffer to mat
             for (int j = 0; j < image_size; ++j) {
@@ -193,7 +97,6 @@ public:
     }
 };
 
-
 class Layer {
 private:
     Matrix W;
@@ -214,7 +117,7 @@ public:
         W.randomize(gen);
     }
 
-    Matrix forward(const Matrix& input) { //produces a vector - Matrix(W.rows,1) (B.cols is always 1)
+    Matrix forward(const Matrix& input) { //produces a vector - Matrix(W.getRows(),1) (B.getCols() is always 1)
         cached_input = input;
         cached_output = W*input + B;
         if (!useReLU) return cached_output;
@@ -222,35 +125,32 @@ public:
     }
 
     static Matrix ReLU(const Matrix& input) {
-        Matrix result(input.rows, input.cols);
-        for (size_t i = 0; i < input.data.size(); ++i) {
-            result.data[i] = std::max(0.0f, input.data[i]);
+        Matrix result(input.getRows(), input.getCols());
+        for (size_t i = 0; i < input.getData().size(); ++i) {
+            result.getData()[i] = std::max(0.0f, input.getData()[i]);
         }
         return result;
     }
     static Matrix ReLUBackward(const Matrix& input, const Matrix& cached) {
-        Matrix result(input.rows, input.cols);
-        for (int i =0; i < input.data.size(); ++i) {
-            result.data[i] = cached.data[i] > 0 ? input.data[i] : 0.0f;
+        Matrix result(input.getRows(), input.getCols());
+        for (int i = 0; i < input.getData().size(); ++i) {
+            result.getData()[i] = cached.getData()[i] > 0 ? input.getData()[i] : 0.0f;
         }
         return result;
     }
     Matrix backward (const Matrix& dA,float lr) {
         Matrix gradient = useReLU ? ReLUBackward(dA,cached_output) : dA;
-        Matrix dW = gradient * cached_input.transpose();
+        Matrix dW = gradient * Matrix::transpose(cached_input); // Switched to static Matrix::transpose call
         //adjust weights & biases
-        for (int i =0; i < W.rows; ++i) {
-            B.data[i] -= gradient.data[i] * lr;
-            for (int j = 0; j < W.cols; ++j) {
+        for (int i = 0; i < W.getRows(); ++i) {
+            B.getData()[i] -= gradient.getData()[i] * lr;
+            for (int j = 0; j < W.getCols(); ++j) {
                 W(i,j) -= dW(i,j) * lr;
             }
         }
-        return W.transpose() * gradient;
+        return Matrix::transpose(W) * gradient;
     }
 };
-
-
-
 
 int main()
 {
