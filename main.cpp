@@ -181,7 +181,7 @@
         return Matrix::transpose(W) * gradient;
         }
         static Matrix getGradient(const Matrix& output, const Matrix& target) {
-            if (output.dimensions(output) != target.dimensions(target)) {throw std::runtime_error("Output dimensions do not match target dimensions");}
+            if (Matrix::dimensions(output) != Matrix::dimensions(target)) {throw std::runtime_error("Output dimensions do not match target dimensions");}
             Matrix result(output.getRows(), output.getCols());
             Matrix probs = softmax(output);
             //2. deduct & write into result
@@ -200,6 +200,23 @@
                 }
             }
             return sum/probs.getCols();
+        }
+        static Matrix batchNorm(const Matrix& input) {
+            Matrix result(input.getRows(), input.getCols());
+            for (int j = 0; j < input.getCols(); ++j) {
+                float mean = 0.0f; /*esentially avg*/
+                float variance = 0.0f;
+                for (int i = 0; i < input.getRows(); ++i) {
+                    mean += input(i, j);
+                }
+                mean /= input.getRows();
+                for (int i = 0; i < input.getRows(); ++i) {
+                    variance += (input(i, j) - mean) * (input(i, j) - mean); /*mean distance squared*/
+                }
+                variance /= input.getRows();
+                //TODO fill in matrix using recalculated values (X - mean)/standard_deviation
+            }
+            return result;
         }
     };
 
