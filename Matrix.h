@@ -30,7 +30,7 @@ public:
 	// Static helper methods
 	static Matrix transpose(const Matrix& Mat);
 	static std::pair<int, int> dimensions(const Matrix& mat);
-	static Matrix average(const std::vector<Matrix>& matList);
+	static Matrix average(const Matrix& matList);
 };
 
 // Non-member operator overloads

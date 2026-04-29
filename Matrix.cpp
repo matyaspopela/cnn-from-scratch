@@ -1,4 +1,4 @@
-#include "matrix.h"
+#include "Matrix.h"
 #include <stdexcept>
 #include <string>
 
@@ -41,23 +41,15 @@ std::pair<int, int> Matrix::dimensions(const Matrix& mat) {
     return {mat.getRows(), mat.getCols()};
 }
 
-Matrix Matrix::average(const std::vector<Matrix>& matList) {
-    if (matList.empty()) {
-        throw std::runtime_error("Cannot average an empty list of matrices");
-    }
-    
-    Matrix result(matList[0].getRows(), matList[0].getCols());
-    float sum;
-    
-    for (size_t i = 0; i < result.getData().size(); ++i) {
-        if (dimensions(matList[0]) != dimensions(result)) {
-            throw std::runtime_error("Dimensions must match, even at index: " + std::to_string(i));
+Matrix Matrix::average(const Matrix& Mat) { //average out a multicolumn matrix into a (rows x 1) matrix
+    if (Mat.getCols() == 1) return Mat;
+    Matrix result(Mat.getRows(), 1);
+    for (int i = 0; i < Mat.getRows(); ++i) {
+        float sum = 0.0f;
+        for (int j = 0; j < Mat.getCols(); ++j) {
+            sum += Mat(i, j);
         }
-        sum = 0.0f;
-        for (size_t j = 0; j < matList.size(); ++j) {
-            sum += matList[j].getData()[i];
-        }
-        result.getData()[i] = sum / matList.size();
+        result(i, 0) = sum / Mat.getCols();
     }
     return result;
 }
