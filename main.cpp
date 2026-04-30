@@ -105,14 +105,16 @@
         Matrix B;
         Matrix cached_input;
         Matrix cached_output;
+
         bool useReLU;
+        bool useBatchNorm;
     public:
-        Layer(int input_size, int output_size, bool useReLU = false)
+        Layer(int input_size, int output_size, bool useReLU = false, bool useBatchNorm=false)
             :W(output_size, input_size),
             B(output_size, 1),
             cached_input(input_size, 1),
             cached_output(output_size, 1),
-            useReLU(useReLU) {
+            useReLU(useReLU), useBatchNorm(useBatchNorm) {
 
             std::random_device rd;
             std::mt19937 gen(rd());
@@ -203,18 +205,25 @@
         }
         static Matrix batchNorm(const Matrix& input) {
             Matrix result(input.getRows(), input.getCols());
-            for (int j = 0; j < input.getCols(); ++j) {
-                float mean = 0.0f; /*esentially avg*/
+
+            for (int i = 0; i < input.getRows(); ++i) {
+                float mean = 0.0f;
                 float variance = 0.0f;
-                for (int i = 0; i < input.getRows(); ++i) {
+                
+                for (int j = 0; j < input.getCols(); ++j) {
                     mean += input(i, j);
                 }
-                mean /= input.getRows();
-                for (int i = 0; i < input.getRows(); ++i) {
-                    variance += (input(i, j) - mean) * (input(i, j) - mean); /*mean distance squared*/
+                mean /= input.getCols();
+
+                for (int j = 0; j < input.getCols(); ++j) {
+                    variance += (input(i, j) - mean) * (input(i, j) - mean);
                 }
-                variance /= input.getRows();
-                //TODO fill in matrix using recalculated values (X - mean)/standard_deviation
+                variance /= input.getCols();
+
+                // Normalize
+                for (int j = 0; j < result.getCols(); ++j) {
+                    result(i, j) = (input(i, j) - mean) / std::sqrt(variance + 1e-5f);
+                }
             }
             return result;
         }

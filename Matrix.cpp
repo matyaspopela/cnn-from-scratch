@@ -19,11 +19,16 @@ float& Matrix::operator()(int row, int col) {
 float Matrix::operator()(int row, int col) const {
     return data[(row * cols) + col];
 }
-
 void Matrix::randomize(std::mt19937& gen) {
     std::uniform_real_distribution<float> distribution(-0.1f, 0.1f);
     for (float& val : data) {
         val = distribution(gen);
+    }
+}
+
+void Matrix::broadcast(const Matrix& Mat) {
+    for (int i = 0; i < data.size(); ++i) {
+        data[i] *= Mat.getData()[i];
     }
 }
 

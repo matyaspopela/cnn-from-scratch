@@ -5,4 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 
 add_executable(cnn_from_scratch main.cpp
         Matrix.cpp
-        Matrix.h)
+        Matrix.h
+        Layers.cpp
+        Layers.h
+)

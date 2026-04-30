@@ -24,8 +24,10 @@ public:
 	float& operator()(int row, int col);
 	float operator()(int row, int col) const;
 
+
 	// Methods
 	void randomize(std::mt19937& gen);
+	void broadcast(const Matrix& Mat);
 
 	// Static helper methods
 	static Matrix transpose(const Matrix& Mat);
