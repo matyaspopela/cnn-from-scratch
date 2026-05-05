@@ -8,4 +8,6 @@ add_executable(cnn_from_scratch main.cpp
         Matrix.h
         Layers.cpp
         Layers.h
+        Network.cpp
+        Network.h
 )

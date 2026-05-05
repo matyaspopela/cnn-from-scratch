@@ -5,7 +5,13 @@
       "Bash(rpm -qa)",
       "Bash(pkg-config --list-all)",
       "WebSearch",
-      "WebFetch(domain:youtrack.jetbrains.com)"
+      "WebFetch(domain:youtrack.jetbrains.com)",
+      "Bash(node -e \"console.log\\(require\\('docx'\\).Document ? 'ok':'no'\\)\")",
+      "Bash(npm install *)",
+      "Bash(npm root *)",
+      "Bash(NODE_PATH=\"C:/Users/matya/AppData/Roaming/npm/node_modules\" node presentation.js)",
+      "Bash(python -m markitdown Prezentace_NeuronovaSit.pptx)",
+      "Bash(pip install *)"
     ]
   }
 }
