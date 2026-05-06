@@ -1,105 +1,138 @@
-    #include <iostream>
-    #include <vector>
-    #include <random>
-    #include <cstdint>
-    #include <fstream>
-    #include <algorithm>
-    #include <cmath>
+#include "Layers.h"
+#include "Matrix.h"
+#include "Network.h"
 
+#include <cstdint>
+#include <fstream>
+#include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
-    #include "Matrix.h"
-    #include "Layers.h"
+#ifndef MNIST_DIR
+#define MNIST_DIR "mnist/"
+#endif
 
-    typedef unsigned char uchar;
-
-    const std::string IMGS_PATH = "/home/matyaspopela/CLionProjects/cnn-from-scratch/mnist/train-images.idx3-ubyte";
-    const std::string LABELS_PATH = "/home/matyaspopela/CLionProjects/cnn-from-scratch/mnist/train-labels.idx1-ubyte";
-
-    uint32_t flipBytes(uint32_t value) {
-        return ((value & 0xFF000000) >> 24) |
-               ((value & 0x00FF0000) >> 8)  |
-               ((value & 0x0000FF00) << 8)  |
-               ((value & 0x000000FF) << 24);
-    }
-
+class MNISTLoader {
+public:
     struct Dataset {
         std::vector<Matrix> images;
-        std::vector<Matrix> labels;
+        std::vector<Matrix> targets;
+        std::vector<int>    labels;
     };
 
-    class DatasetLoader {
-    public:
-        Dataset static loadImages(const std::string& filepath) {
-            Dataset dataset;
-            std::ifstream file(filepath, std::ios::binary);
+    static Dataset load(const std::string& images_path,
+                        const std::string& labels_path) {
+        Dataset d;
+        loadImages(d, images_path);
+        loadLabels(d, labels_path);
+        return d;
+    }
 
-            if (!file.is_open()) {
-                std::cerr << "Failed to open file" << std::endl;
-                return dataset;
+private:
+    static constexpr float kPixelMean = 0.1307f;
+    static constexpr float kPixelStd  = 0.3081f;
+    static constexpr int   kNumClasses = 10;
+
+    static uint32_t flipBytes(uint32_t v) {
+        return ((v & 0xFF000000) >> 24) | ((v & 0x00FF0000) >> 8) |
+               ((v & 0x0000FF00) << 8)  | ((v & 0x000000FF) << 24);
+    }
+
+    static void loadImages(Dataset& d, const std::string& path) {
+        std::ifstream f(path, std::ios::binary);
+        if (!f) throw std::runtime_error("Cannot open " + path);
+
+        uint32_t magic = 0, n = 0, rows = 0, cols = 0;
+        f.read(reinterpret_cast<char*>(&magic), 4);
+        f.read(reinterpret_cast<char*>(&n), 4);
+        f.read(reinterpret_cast<char*>(&rows), 4);
+        f.read(reinterpret_cast<char*>(&cols), 4);
+        n    = flipBytes(n);
+        rows = flipBytes(rows);
+        cols = flipBytes(cols);
+
+        const int img_size = static_cast<int>(rows * cols);
+        std::vector<uint8_t> buf(img_size);
+
+        d.images.reserve(n);
+        for (uint32_t i = 0; i < n; ++i) {
+            f.read(reinterpret_cast<char*>(buf.data()), img_size);
+            Matrix img(img_size, 1);
+            for (int j = 0; j < img_size; ++j) {
+                img(j, 0) = (buf[j] / 255.0f - kPixelMean) / kPixelStd;
             }
-            uint32_t magic_number, nimages, nrows, ncols;
-
-            file.read((char*) &magic_number, 4);
-            file.read((char*) &nimages, 4);
-            file.read((char*) &nrows, 4);
-            file.read((char*) &ncols, 4);
-
-            magic_number = flipBytes(magic_number);
-            nimages = flipBytes(nimages);
-            nrows = flipBytes(nrows);
-            ncols = flipBytes(ncols);
-            std::cout << "magic number: " << magic_number << std::endl;
-
-            int image_size = nrows * ncols;
-
-            std::vector<uint8_t> pixel_buffer(image_size);
-
-            for (int i = 0; i < nimages; ++i) {
-                file.read((char*) pixel_buffer.data(), image_size);
-
-                Matrix img(image_size, 1);
-                for (int j = 0; j < image_size; ++j) {
-                    img(j, 0) = pixel_buffer[j] / 255.0f;
-                }
-                dataset.images.push_back(img);
-            }
-            file.close();
-            return dataset;
+            d.images.push_back(std::move(img));
         }
-        static void populateLabels(Dataset& dataset, const std::string& filepath) {
-            std::ifstream file(filepath, std::ios::binary);
-            if (!file.is_open()) {
-                throw std::runtime_error("Failed to open file, dataset cannot be populated with labels");
-            }
-            uint32_t magic_number, nimages;
-            file.read((char*) &magic_number, 4);
-            file.read((char*) &nimages, 4);
+    }
 
-            magic_number = flipBytes(magic_number);
-            nimages = flipBytes(nimages);
-            std::cout << "magic number: " << magic_number << std::endl;
+    static void loadLabels(Dataset& d, const std::string& path) {
+        std::ifstream f(path, std::ios::binary);
+        if (!f) throw std::runtime_error("Cannot open " + path);
 
+        uint32_t magic = 0, n = 0;
+        f.read(reinterpret_cast<char*>(&magic), 4);
+        f.read(reinterpret_cast<char*>(&n), 4);
+        n = flipBytes(n);
 
-            uchar val = 0;
-            for (int i = 0; i < nimages; ++i) {
+        if (n > d.images.size()) n = static_cast<uint32_t>(d.images.size());
 
-                file.read((char*) &val, 1);
-
-                Matrix target(10,1);
-                target(val, 0) = 1.0f;
-                dataset.labels.push_back(target);
-            }
-            file.close();
+        d.targets.reserve(n);
+        d.labels.reserve(n);
+        for (uint32_t i = 0; i < n; ++i) {
+            uint8_t v = 0;
+            f.read(reinterpret_cast<char*>(&v), 1);
+            Matrix t(kNumClasses, 1);
+            t(v, 0) = 1.0f;
+            d.targets.push_back(std::move(t));
+            d.labels.push_back(static_cast<int>(v));
         }
-    };
-
-class Network {
-    private:
-public:
-
+    }
 };
 
-    int main()
-    {
+namespace {
+
+Network buildModel() {
+    Network net;
+    net.add(std::make_unique<DenseLayer>(784, 128))
+       .add(std::make_unique<ReLULayer>())
+       .add(std::make_unique<DenseLayer>(128, 64))
+       .add(std::make_unique<ReLULayer>())
+       .add(std::make_unique<DenseLayer>(64, 10));
+    return net;
+}
+
+}
+
+int main() {
+    try {
+        const std::string base = MNIST_DIR;
+
+        std::cout << "Loading MNIST..." << std::endl;
+        const auto train_set = MNISTLoader::load(base + "train-images.idx3-ubyte",
+                                                 base + "train-labels.idx1-ubyte");
+        const auto test_set  = MNISTLoader::load(base + "t10k-images.idx3-ubyte",
+                                                 base + "t10k-labels.idx1-ubyte");
+        std::cout << "  train: " << train_set.images.size() << " samples\n"
+                  << "  test : " << test_set.images.size()  << " samples" << std::endl;
+
+        Network net = buildModel();
+
+        Network::TrainingConfig cfg;
+        cfg.epochs        = 10;
+        cfg.batch_size    = 32;
+        cfg.learning_rate = 0.01f;
+        cfg.verbose       = true;
+
+        net.train(train_set.images, train_set.targets, cfg,
+                  &test_set.images, &test_set.labels);
+
+        const float accuracy = net.evaluate(test_set.images, test_set.labels);
+        std::cout << "\nFinal test accuracy: " << accuracy << "%" << std::endl;
         return 0;
+    } catch (const std::exception& e) {
+        std::cerr << "Fatal: " << e.what() << std::endl;
+        return 1;
     }
+}

@@ -11,3 +11,4 @@ add_executable(cnn_from_scratch main.cpp
         Network.cpp
         Network.h
 )
+target_compile_definitions(cnn_from_scratch PRIVATE MNIST_DIR="${CMAKE_SOURCE_DIR}/mnist/")
