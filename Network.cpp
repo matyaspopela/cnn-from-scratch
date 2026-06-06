@@ -17,7 +17,7 @@ Matrix Network::forward(const Matrix& input) {
     if (layers_.empty()) throw std::runtime_error("Network has no layers");
     Matrix x = input;
     for (auto& layer : layers_) {
-        x = layer->forward(x);
+        x = layer->forward(x); //same as (*layer).forward(x) - derefferenced ptr call
     }
     return x;
 }
@@ -25,7 +25,7 @@ Matrix Network::forward(const Matrix& input) {
 void Network::backward(const Matrix& dlogits, float learning_rate) {
     Matrix g = dlogits;
     for (auto it = layers_.rbegin(); it != layers_.rend(); ++it) {
-        g = (*it)->backward(g, learning_rate);
+        g = (*it)->backward(g, learning_rate); //double derefference because: 1st => get to the slot in the vector; 2nd => get to the layers (slots) backward method.
     }
 }
 
