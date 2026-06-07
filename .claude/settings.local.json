@@ -13,7 +13,9 @@
       "Bash(python -m markitdown Prezentace_NeuronovaSit.pptx)",
       "Bash(pip install *)",
       "Bash(rm -rf /mnt/c/Users/matya/MyFiles/learning/cnn-from-scratch/tests)",
-      "Read(//mnt/c/Users/matya/MyFiles/learning/**)"
+      "Read(//mnt/c/Users/matya/MyFiles/learning/**)",
+      "Bash(cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug)",
+      "Bash(cmake --build build -j)"
     ]
   }
 }

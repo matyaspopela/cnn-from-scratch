@@ -3,12 +3,18 @@ project(cnn_from_scratch)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_executable(cnn_from_scratch main.cpp
-        Matrix.cpp
-        Matrix.h
-        Layers.cpp
-        Layers.h
-        Network.cpp
-        Network.h
+add_library(cnn
+        src/core/Matrix.cpp
+        src/core/Tensor.cpp
+        src/layers/Layer.cpp
+        src/layers/Dense.cpp
+        src/layers/ReLU.cpp
+        src/layers/BatchNorm.cpp
+        src/data/MnistLoader.cpp
+        src/Network.cpp
 )
-target_compile_definitions(cnn_from_scratch PRIVATE MNIST_DIR="${CMAKE_SOURCE_DIR}/mnist/")
+target_include_directories(cnn PUBLIC include)
+
+add_executable(mnist_train apps/mnist_train.cpp)
+target_link_libraries(mnist_train PRIVATE cnn)
+target_compile_definitions(mnist_train PRIVATE MNIST_DIR="${CMAKE_SOURCE_DIR}/data/mnist/")

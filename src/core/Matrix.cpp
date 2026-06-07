@@ -1,4 +1,4 @@
-#include "Matrix.h"
+#include "cnn/core/Matrix.h"
 #include <stdexcept>
 #include <string>
 

@@ -33,3 +33,7 @@
 
 # Claude files (used for making the presentations to my class lol)
 .claude
+
+# Build directories
+build/
+cmake-build-*/
